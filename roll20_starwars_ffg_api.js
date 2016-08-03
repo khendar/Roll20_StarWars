@@ -2239,9 +2239,13 @@ eote.process.label = function (cmd, diceObj) {
 
             switch (labelTest) {
                 case 'skill':
+                    labelStr = '{{title='+labelStr + message + '}}';
+                    break;
                 case 'dice':
+                    labelStr = '{{title='+labelStr + message + '}}';
+                    break;
                 case 'weapon':
-                    labelStr = labelStr + message + '}}';
+                    labelStr = '{{title='+labelStr + message + '}}';
                     break;
                 default:
                     labelStr = labelStr + '{{' + label + '=' + message + '}}';
@@ -3739,10 +3743,7 @@ eote.process.diceOutput = function (diceObj, playerName, playerID) {
     if (eote.defaults.globalVars.diceTestEnabled === true) {
         chatGlobal = "/direct <br>6b 8g 12y 6blk 8p 12r 12w <br>";
     } else if (label) {
-        if (!label.trim().endsWith('}}'))
-            label += '}}';
-
-        chatGlobal = "/direct &{template:" + templateName +"} {{title=" + diceObj.vars.label + " {{subtitle=" + characterPlayer + "}}";
+        chatGlobal = "/direct &{template:" + templateName +"} " + diceObj.vars.label + "{{subtitle=" + characterPlayer + "}}";
     } else {
         chatGlobal = "/direct &{template:" + templateName +"} {{title=" + characterPlayer + "}}";
     }
