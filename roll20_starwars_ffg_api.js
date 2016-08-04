@@ -2644,23 +2644,8 @@ eote.process.crit = function (cmd, diceObj) {
         var rollOffset = parseInt(getAttrByName(diceObj.vars.characterID, type + '-critAddOffset'));
         rollOffset = rollOffset ? rollOffset : 0;
         eote.process.logger("critRoll", "rollOffset: " + rollOffset);
-        var totalcrits = 0;
+        var totalcrits = parseInt(getAttrByName(diceObj.vars.characterID, type + '-critTotal'));;
 
-        //check open critical spot
-        for (i = 15; i >= 1; i--) {
-
-            var slot = getAttrByName(diceObj.vars.characterID, type + '-critOn' + i);
-
-            if (slot == '0' || slot == '') {
-                openSlot = i;
-            } else {
-                totalcrits = totalcrits + 1;
-            }
-        }
-        if (!openSlot) {
-            sendChat("Alert", "&{template:critical} {{title=Alert}} {{wide=Why are you not dead!?}}");
-            return false;
-        }
         //roll random
         if (!addCritNum) {
             diceRoll = randomInteger(100);
@@ -2675,7 +2660,6 @@ eote.process.crit = function (cmd, diceObj) {
         }
         //find crit in critical table
         for (var key in critTable) {
-            /*TODO error on split*/
             var percent = critTable[key].percent.split(' to ');
             var low = parseInt(percent[0]);
             var high = percent[1] ? parseInt(percent[1]) : 1000;
@@ -2684,35 +2668,37 @@ eote.process.crit = function (cmd, diceObj) {
 
                 critAttrs = [
                     {
-                        name: type + '-critName' + openSlot,
+                        name: type + '-critTotal',
+                        current: totalcrits+1,
+                        max: '',
+                        update: true
+                    },
+                ];
+                critAttrs2 = [
+                    {
+                        name: type + '-critName',
                         current: critTable[key].name,
                         max: '',
                         update: true
                     },
                     {
-                        name: type + '-critSeverity' + openSlot,
+                        name: type + '-critSeverity' ,
                         current: critTable[key].severity,
                         max: '',
                         update: true
                     },
                     {
-                        name: type + '-critRange' + openSlot,
+                        name: type + '-critRange',
                         current: critTable[key].percent,
                         max: '',
                         update: true
                     },
                     {
-                        name: type + '-critSummary' + openSlot,
+                        name: type + '-critSummary',
                         current: critTable[key].Result,
                         max: '',
                         update: true
                     },
-                    {
-                        name: type + '-critOn' + openSlot,
-                        current: openSlot,
-                        max: '',
-                        update: true
-                    }
                 ];
                 eote.updateAddAttribute(characterObj, critAttrs);
                 var chat = '/direct &{template:base} {{title=' + diceObj.vars.characterName + '}}';
@@ -2729,10 +2715,9 @@ eote.process.crit = function (cmd, diceObj) {
                 sendChat(diceObj.vars.characterName, chat);
             }
         }
+        eote.process.createRepeatingCrit(/repeating_critical/,characterObj,critAttrs2);
     };
-
     var critHeal = function (critID, type) {
-
         critAttrs = [
             {
                 name: type + '-critName' + critID,
@@ -2758,14 +2743,25 @@ eote.process.crit = function (cmd, diceObj) {
                 max: '',
                 update: true
             },
-            {
+/*            {
                 name: type + '-critOn' + critID,
                 current: 0,
                 max: '',
                 update: true
-            }
+            }*/
         ];
-        eote.updateAddAttribute(characterObj, critAttrs);
+        var fields = findObjs({                              
+          _type: "attribute",                              
+        });
+        log(fields);
+       // _.each(currentPageGraphics, function(obj) {    
+          //Do something with obj, which is in the current page and is a graphic.
+       // });
+        //var crit = getObj("attribute", critID);
+       // log(crit);
+        //crit.remove();
+
+//        eote.updateAddAttribute(characterObj, critAttrs);
     };
     var critArray = cmd[1].split('|');
     var command = critArray[0];
@@ -2785,6 +2781,96 @@ eote.process.crit = function (cmd, diceObj) {
         critRoll(null, type);
     }
 };
+eote.process.createRepeatingCrit = function(nameRegex,charactersObj,critAttrs) {
+    //var characterId = diceObj.vars.characterID;
+    eote.process.logger("repeating","repeating");
+    eote.process.logger("nameregex",nameRegex);
+    eote.process.logger("critAttrs",critAttrs);
+    var newId = eote.process.generateRowID();
+   //check if object or array
+    if (!_.isArray(charactersObj)) {
+        charactersObj = [charactersObj];
+    }
+    if (!_.isArray(critAttrs)) {
+        critAttrs = [critAttrs];
+    }
+    var characterId = "";
+    _.each(charactersObj, function (characterObj) {//loop characters
+
+        var characterName = '';
+
+        if (characterObj.name) {
+            characterName = characterObj.name;
+        } else {
+            characterName = characterObj.get('name');
+        }
+        characterId = characterObj.id;
+        //find attribute via character ID
+        var characterAttributesObj = findObjs({ _type: "attribute", characterid: characterObj.id });
+
+        if (critAttrs.length != 0) {
+
+            log('UPDATE/ADD ATTRIBUTES FOR:----------------------->' + characterName);
+
+            _.each(critAttrs, function (critAttr) { //loop attributes to update / add
+
+                attr = _.find(characterAttributesObj, function (a) {
+                    return (a.get('name') === critAttr.name);
+                });
+                if (attr) {
+                    if (critAttr.update) {
+                        log('Update Attr: ' + critAttr.name);
+                        attr.set({ current: critAttr.current });
+                        attr.set({ max: critAttr.max ? critAttr.max : '' });
+                    }
+                } else {
+                     log('Add Attr: '+ critAttr.name);
+                     log( 'Value: '+ critAttr.current);
+                    eote.createObj('attribute', {
+                        characterid: characterObj.id,
+                        name: "repeating_critical_" + newId + "_" + critAttr.name,
+                        current: critAttr.current,
+                        max: critAttr.max ? critAttr.max : ''
+                    });
+                }
+            });
+        }
+    });   
+    eote.createObj('attribute', {
+        characterid: characterId,
+        name: "repeating_critical_" + newId + "_character-critId",
+        current: newId
+    }); 
+       
+};
+
+
+
+ eote.process.generateRowID = function () {
+    "use strict";
+    var a = 0, b = [];
+    var c = (new Date()).getTime() + 0, d = c === a;
+    a = c;
+    for (var e = new Array(8), f = 7; 0 <= f; f--) {
+        e[f] = "-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz".charAt(c % 64);
+        c = Math.floor(c / 64);
+    }
+    c = e.join("");
+    if (d) {
+        for (f = 11; 0 <= f && 63 === b[f]; f--) {
+            b[f] = 0;
+        }
+        b[f]++;
+    } else {
+        for (f = 0; 12 > f; f++) {
+            b[f] = Math.floor(64 * Math.random());
+        }
+    }
+    for (f = 0; 12 > f; f++){
+        c += "-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz".charAt(b[f]);
+    }
+    return c.replace(/_/g, "Z");
+ };   
 
 eote.process.critShip = function (cmd, diceObj) {
 
