@@ -1864,7 +1864,7 @@ eote.process.setup = function (cmd, playerName, playerID) {
     var critShipMatch = cmd.match(eote.defaults.regex.critShip);
 
     if (critShipMatch) {
-        eote.process.critShip(critShipMatch, diceObj);
+        eote.process.crit(critShipMatch, diceObj);
         return false;
     }
 
@@ -2456,7 +2456,7 @@ eote.process.crit = function (cmd, diceObj) {
     eote.process.logger("eote.process.crit", "");
 
     var characterObj = [{ name: diceObj.vars.characterName, id: diceObj.vars.characterID }];
-    var critTable = [
+    var critTableLifeform = [
         {
             percent: '1 to 5',
             severity: 1,
@@ -2635,15 +2635,132 @@ eote.process.crit = function (cmd, diceObj) {
             Result: 'Complete, absolute death.'
         }
     ];
+    var critTableMachine = [
+        {
+            percent: '1 to 9',
+            severity: 1,
+            name: 'Mechanical Stress',
+            Result: 'Ship or vehicle suffers 1 system strain.'
+        },
+        {
+            percent: '10 to 18',
+            severity: 1,
+            name: 'Jostled',
+            Result: 'All crew members suffer 1 strain.'
+        },
+        {
+            percent: '19 to 27',
+            severity: 1,
+            name: 'Losing Power to Shields',
+            Result: 'Decrease defense in affected defense zone by 1 until repaired. If ship or vehicle has no defense, suffer 1 system strain.'
+        },
+        {
+            percent: '28 to 36',
+            severity: 1,
+            name: 'Knocked Off Course',
+            Result: 'On next turn, pilot cannot execute any maneuvers. Instead, must make a Piloting check to regain bearings and resume course. Difficulty depends on current speed.'
+        },
+        {
+            percent: '37 to 45',
+            severity: 1,
+            name: 'Tailspin',
+            Result: 'All firing from ship or vehicle suffers 2 setback dice until end of pilot\'s next turn.'
+        },
+        {
+            percent: '46 to 54',
+            severity: 1,
+            name: 'Component Hit',
+            Result: 'One component of the attacker\'s choice is knocked offline, and is rendered inoperable until the end of the following round. See page 245 CRB for Small/Large Vehicle and Ship Component tables. '
+        },
+        // --------------- severity : 2
+        {
+            percent: '55 to 63',
+            severity: 2,
+            name: 'Shields Failing',
+            Result: 'Decrease defense in all defense zones by 1 until repaired. If ship or vehicle has no defense, suffer 2 system strain.'
+        },
+        {
+            percent: '64 to 72',
+            severity: 2,
+            name: 'Hyperdrive or Navicomputer Failure',
+            Result: 'Cannot make any jump to hyperspace until repaired. If ship or vehicle has no hyperdrive, navigation systems fail leaving it unable to tell where it is or is going.'
+        },
+        {
+            percent: '73 to 81',
+            severity: 2,
+            name: 'Power Fluctuations',
+            Result: 'Pilot cannot voluntarily inflict system strain on the ship until repaired.'
+        },
+        // --------------- severity : 3
+        {
+            percent: '82 to 90',
+            severity: 3,
+            name: 'Shields Down',
+            Result: 'Decrease defense in affected defense zone to 0 and all other defense zones by 1 point until repaired. If ship or vehicle has no defense, suffer 4 system strain.'
+        },
+        {
+            percent: '91 to 99',
+            severity: 3,
+            name: 'Engine Damaged',
+            Result: 'Ship or vehicle\'s maximum speed reduced by 1, to a minimum of 1, until repaired.'
+        },
+        {
+            percent: '100 to 108',
+            severity: 3,
+            name: 'Shield Overload',
+            Result: 'Decrease defense in all defense zones to 0 until repaired. In addition, suffer 2 system strain. Cannot be repaired until end of encounter. If ship or vehicle has no defense, reduce armor by 1 until repaired.'
+        },
+        {
+            percent: '109 to 117',
+            severity: 3,
+            name: 'Engines Down',
+            Result: 'Ship or vehicle\'s maximum speed reduced to 0. In addition, ship or vehicle cannot execute maneuvers until repaired. Ship continues on course at current speed and cannot be stopped or course changed until repaired.'
+        },
+        {
+            percent: '118 to 126',
+            severity: 3,
+            name: 'Major System Failure',
+            Result: 'One component of the attacker\'s choice is heavily damages, and is inoperable until the critical hit is repaired. See page 245 CRB for Small/Large Vehicle and Ship Component tables. '
+        },
+        // --------------- severity : 4
+        {
+            percent: '127 to 133',
+            severity: 4,
+            name: 'Major Hull Breach',
+            Result: 'Ships and vehicles of silhouette 4 and smaller depressurize in a number of rounds equal to silhouette. Ships of silhouette 5 and larger don\'t completely depressurize, but parts do (specifics at GM discretion). Ships and vehicles operating in atmosphere instead suffer a Destabilized Critical.'
+        },
+        {
+            percent: '134 to 138',
+            severity: 4,
+            name: 'Destabilised',
+            Result: 'Reduce ship or vehicle\'s hull integrity threshold and system strain threshold to half original values until repaired.'
+        },
+        {
+            percent: '139 to 144',
+            severity: 4,
+            name: 'Fire!',
+            Result: 'Fire rages through ship or vehicle and it immediately takes 2 system strain. Fire can be extinguished with appropriate skill, Vigilance or Cool checks at GM\'s discretion. Takes one round per two silhouette to put out.'
+        },
+        {
+            percent: '145 to 153',
+            severity: 4,
+            name: 'Breaking Up',
+            Result: 'At the end of next round, ship is completely destroyed. Anyone aboard has one round to reach escape pod or bail out before they are lost.'
+        },
+        {
+            percent: '154+',
+            severity: 4,
+            name: 'Vaporized',
+            Result: 'The ship or Vehicle is completely destroyed.'
+        }
+    ];
     var critRoll = function (addCritNum, type) {
-        
         var openSlot = false;
         var diceRoll = '';
         var critMod = '';
         var rollTotal = '';
         var rollOffset = parseInt(getAttrByName(diceObj.vars.characterID, type + '-critAddOffset'));
         rollOffset = rollOffset ? rollOffset : 0;
-        eote.process.logger("critRoll", "rollOffset: " + rollOffset);
         var totalcrits = parseInt(getAttrByName(diceObj.vars.characterID, type + '-critTotal'));;
 
         //roll random
@@ -2659,6 +2776,13 @@ eote.process.crit = function (cmd, diceObj) {
             rollTotal = parseInt(addCritNum);
         }
         //find crit in critical table
+        if(type=="character" || type=="npc" || type == "companion" || type=="beast"){
+            critTable = critTableLifeform;
+        }
+        if(type=="starship" || type=="vehicle"){
+            critTable = critTableMachine;            
+        }
+
         for (var key in critTable) {
             var percent = critTable[key].percent.split(' to ');
             var low = parseInt(percent[0]);
@@ -2700,8 +2824,13 @@ eote.process.crit = function (cmd, diceObj) {
                         update: true
                     },
                 ];
-                var chat = '/direct &{template:base} {{title=' + diceObj.vars.characterName + '}}';
-                chat = chat + '{{subtitle=Critical Injury}}';
+                if(type=="starship" || type=="vehicle"){
+                    var chat = '/direct &{template:base} {{title=Vehicle Critical}} ';
+                    chat = chat + '{{subtitle=' + diceObj.vars.characterName + '}}';
+                }else{
+                    var chat = '/direct &{template:base} {{title=' + diceObj.vars.characterName + '}}';
+                    chat = chat + '{{subtitle=Critical Injury}}';
+                }
                 chat = chat + '{{Previous Criticals=' + totalcrits + ' x 10}}';
                 if (rollOffset) {
                     chat = chat + '{{Dice Roll Offset=' + rollOffset + '}}';
@@ -2847,296 +2976,8 @@ eote.process.createRepeatingCrit = function(type,charactersObj,critAttrs) {
         c += "-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz".charAt(b[f]);
     }
     return c.replace(/_/g, "Z");
- };   
+ };
 
-eote.process.critShip = function (cmd, diceObj) {
-
-    /* CritShip
-     * default: 
-     * Description: Rolls vehicle critical table, Both crit() and critShip() function the same
-     * Command: !eed critShip(roll) critShip(roll|#) critShip(heal|#)
-     * ---------------------------------------------------------------- */
-
-    var characterObj = [{ name: diceObj.vars.characterName, id: diceObj.vars.characterID }];
-
-    var critTable = [
-        {
-            percent: '1 to 9',
-            severity: 1,
-            name: 'Mechanical Stress',
-            Result: 'Ship or vehicle suffers 1 system strain.'
-        },
-        {
-            percent: '10 to 18',
-            severity: 1,
-            name: 'Jostled',
-            Result: 'All crew members suffer 1 strain.'
-        },
-        {
-            percent: '19 to 27',
-            severity: 1,
-            name: 'Losing Power to Shields',
-            Result: 'Decrease defense in affected defense zone by 1 until repaired. If ship or vehicle has no defense, suffer 1 system strain.'
-        },
-        {
-            percent: '28 to 36',
-            severity: 1,
-            name: 'Knocked Off Course',
-            Result: 'On next turn, pilot cannot execute any maneuvers. Instead, must make a Piloting check to regain bearings and resume course. Difficulty depends on current speed.'
-        },
-        {
-            percent: '37 to 45',
-            severity: 1,
-            name: 'Tailspin',
-            Result: 'All firing from ship or vehicle suffers 2 setback dice until end of pilot\'s next turn.'
-        },
-        {
-            percent: '46 to 54',
-            severity: 1,
-            name: 'Component Hit',
-            Result: 'One component of the attacker\'s choice is knocked offline, and is rendered inoperable until the end of the following round. See page 245 CRB for Small/Large Vehicle and Ship Component tables. '
-        },
-        // --------------- severity : 2
-        {
-            percent: '55 to 63',
-            severity: 2,
-            name: 'Shields Failing',
-            Result: 'Decrease defense in all defense zones by 1 until repaired. If ship or vehicle has no defense, suffer 2 system strain.'
-        },
-        {
-            percent: '64 to 72',
-            severity: 2,
-            name: 'Hyperdrive or Navicomputer Failure',
-            Result: 'Cannot make any jump to hyperspace until repaired. If ship or vehicle has no hyperdrive, navigation systems fail leaving it unable to tell where it is or is going.'
-        },
-        {
-            percent: '73 to 81',
-            severity: 2,
-            name: 'Power Fluctuations',
-            Result: 'Pilot cannot voluntarily inflict system strain on the ship until repaired.'
-        },
-        // --------------- severity : 3
-        {
-            percent: '82 to 90',
-            severity: 3,
-            name: 'Shields Down',
-            Result: 'Decrease defense in affected defense zone to 0 and all other defense zones by 1 point until repaired. If ship or vehicle has no defense, suffer 4 system strain.'
-        },
-        {
-            percent: '91 to 99',
-            severity: 3,
-            name: 'Engine Damaged',
-            Result: 'Ship or vehicle\'s maximum speed reduced by 1, to a minimum of 1, until repaired.'
-        },
-        {
-            percent: '100 to 108',
-            severity: 3,
-            name: 'Shield Overload',
-            Result: 'Decrease defense in all defense zones to 0 until repaired. In addition, suffer 2 system strain. Cannot be repaired until end of encounter. If ship or vehicle has no defense, reduce armor by 1 until repaired.'
-        },
-        {
-            percent: '109 to 117',
-            severity: 3,
-            name: 'Engines Down',
-            Result: 'Ship or vehicle\'s maximum speed reduced to 0. In addition, ship or vehicle cannot execute maneuvers until repaired. Ship continues on course at current speed and cannot be stopped or course changed until repaired.'
-        },
-        {
-            percent: '118 to 126',
-            severity: 3,
-            name: 'Major System Failure',
-            Result: 'One component of the attacker\'s choice is heavily damages, and is inoperable until the critical hit is repaired. See page 245 CRB for Small/Large Vehicle and Ship Component tables. '
-        },
-        // --------------- severity : 4
-        {
-            percent: '127 to 133',
-            severity: 4,
-            name: 'Major Hull Breach',
-            Result: 'Ships and vehicles of silhouette 4 and smaller depressurize in a number of rounds equal to silhouette. Ships of silhouette 5 and larger don\'t completely depressurize, but parts do (specifics at GM discretion). Ships and vehicles operating in atmosphere instead suffer a Destabilized Critical.'
-        },
-        {
-            percent: '134 to 138',
-            severity: 4,
-            name: 'Destabilised',
-            Result: 'Reduce ship or vehicle\'s hull integrity threshold and system strain threshold to half original values until repaired.'
-        },
-        {
-            percent: '139 to 144',
-            severity: 4,
-            name: 'Fire!',
-            Result: 'Fire rages through ship or vehicle and it immediately takes 2 system strain. Fire can be extinguished with appropriate skill, Vigilance or Cool checks at GM\'s discretion. Takes one round per two silhouette to put out.'
-        },
-        {
-            percent: '145 to 153',
-            severity: 4,
-            name: 'Breaking Up',
-            Result: 'At the end of next round, ship is completely destroyed. Anyone aboard has one round to reach escape pod or bail out before they are lost.'
-        },
-        {
-            percent: '154+',
-            severity: 4,
-            name: 'Vaporized',
-            Result: 'The ship or Vehicle is completely destroyed.'
-        }
-    ];
-    var critRoll = function (addCritNum, type) {
-        log(type);
-        var openSlot = false;
-        var diceRoll = '';
-        var critMod = '';
-        var rollTotal = '';
-        var rollOffset = parseInt(getAttrByName(diceObj.vars.characterID, type + '-critShipAddOffset'));
-        rollOffset = rollOffset ? rollOffset : 0;
-        var totalcrits = parseInt(getAttrByName(diceObj.vars.characterID, type + '-critTotal'));
-        log("totalcrits:"+totalcrits);
-        //roll random
-        if (!addCritNum) {
-            diceRoll = randomInteger(100);
-            critMod = (totalcrits * 10);
-            rollTotal = diceRoll + critMod + rollOffset;
-            rollTotal = rollTotal < 1 ? 1 : rollTotal;
-        } else {
-            rollTotal = parseInt(addCritNum);
-        }
-        //find crit in critical table
-        for (var key in critTable) {
-
-            var percent = critTable[key].percent.split(' to ');
-            var low = parseInt(percent[0]);
-            var high = percent[1] ? parseInt(percent[1]) : 1000;
-
-            if ((rollTotal >= low) && (rollTotal <= high)) {
-                critAttrs = [
-                    {
-                        name: type + '-critTotal',
-                        current: totalcrits+1,
-                        max: '',
-                        update: true
-                    },
-                ];
-                critAttrs2 = [
-                    {
-                        name: type + '-critName',
-                        current: critTable[key].name,
-                        max: '',
-                        update: true
-                    },
-                    {
-                        name: type + '-critSeverity',
-                        current: critTable[key].severity,
-                        max: '',
-                        update: true
-                    },
-                    {
-                        name: type + '-critRange',
-                        current: critTable[key].percent,
-                        max: '',
-                        update: true
-                    },
-                    {
-                        name: type + '-critSummary',
-                        current: critTable[key].Result,
-                        max: '',
-                        update: true
-                    },
-                ];
-                eote.updateAddAttribute(characterObj, critAttrs);
-
-                var chat = '/direct &{template:base} {{title=Vehicle Critical}} ';
-                chat = chat + '{{subtitle=' + diceObj.vars.characterName + '}}';
-                chat = chat + '{{Previous Criticals=' + totalcrits + ' x 10}}';
-                if (rollOffset) {
-                    chat = chat + '{{Dice Roll Offset=' + rollOffset + '}}';
-                }
-                chat = chat + '{{Dice Roll=' + diceRoll + '}}';
-                chat = chat + '{{Total=' + rollTotal + '}}';
-                chat = chat + '{{wide=<b>' + critTable[key].name + '</b><br>';
-                chat = chat + critTable[key].Result + '}}';
-
-                sendChat(diceObj.vars.characterName, chat);
-            }
-        }
-        eote.updateAddAttribute(characterObj, critAttrs);
-        eote.process.createRepeatingCrit(type,characterObj,critAttrs2);
-    };
-
-    var critHeal = function (critID, type) {
-        log(critID);
-        log(type);
-        var rowid = critID;
-        var regex = new RegExp('^repeating_.*?_' + rowid + '_.*?$');
-        var attrsInRow = filterObjs(function(obj) {
-            if (obj.get('type') !== 'attribute' || obj.get('characterid') !== diceObj.vars.characterID) return false;
-            return regex.test(obj.get('name'));
-        });
-        _.each(attrsInRow, function (attribute) {//loop characters
-            attribute.remove();
-        });
-      var totalcrits = parseInt(getAttrByName(diceObj.vars.characterID, type + '-critTotal'));
-          critAttrs = [
-            {
-                name: type + '-critTotal',
-                current: totalcrits-1,
-                max: '',
-                update: true
-            },
-
-        ];
-        eote.updateAddAttribute(characterObj, critAttrs);
-    };
-
-  /*      critAttrs = [
-            {
-                name: type + '-critShipName' + critID,
-                current: '',
-                max: '',
-                update: true
-            },
-            {
-                name: type + '-critShipSeverity' + critID,
-                current: '',
-                max: '',
-                update: true
-            },
-            {
-                name: type + '-critShipRange' + critID,
-                current: '',
-                max: '',
-                update: true
-            },
-            {
-                name: type + '-critShipSummary' + critID,
-                current: '',
-                max: '',
-                update: true
-            },
-            {
-                name: type + '-critShipOn' + critID,
-                current: 0,
-                max: '',
-                update: true
-            }
-        ];
-
-        eote.updateAddAttribute(characterObj, critAttrs);*/
-    
-    var critArray = cmd[1].split('|');
-    var command = critArray[0];
-    var type = critArray[1] ? critArray[1] : null;
-    var input = critArray[2] ? critArray[2] : null;
-
-    if (type == null) {
-        sendChat("Alert", "Type not supplied. Needs starship or vehicle");
-        return;
-    }
-
-    if (command == 'heal') {
-        critHeal(input, type);
-    } else if (command == 'add') {
-        critRoll(input, type);
-    } else { // crit(roll)
-        critRoll(null, type);
-    }
-};
 
 eote.process.gmdice = function (cmd) {
 
