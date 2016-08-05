@@ -2761,8 +2761,11 @@ eote.process.crit = function (cmd, diceObj) {
         var rollTotal = '';
         var rollOffset = parseInt(getAttrByName(diceObj.vars.characterID, type + '-critAddOffset'));
         rollOffset = rollOffset ? rollOffset : 0;
-        var totalcrits = parseInt(getAttrByName(diceObj.vars.characterID, type + '-critTotal'));;
-
+        var totalcrits = parseInt(getAttrByName(diceObj.vars.characterID, type + '-critTotal'));
+        if(!totalcrits){
+            totalcrits = 0;
+        }
+        
         //roll random
         if (!addCritNum) {
             diceRoll = randomInteger(100);
@@ -2782,12 +2785,11 @@ eote.process.crit = function (cmd, diceObj) {
         if(type=="starship" || type=="vehicle"){
             critTable = critTableMachine;            
         }
-
         for (var key in critTable) {
             var percent = critTable[key].percent.split(' to ');
             var low = parseInt(percent[0]);
             var high = percent[1] ? parseInt(percent[1]) : 1000;
-
+           
             if ((rollTotal >= low) && (rollTotal <= high)) {
 
                 critAttrs = [
