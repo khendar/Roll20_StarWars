@@ -2636,7 +2636,7 @@ eote.process.crit = function (cmd, diceObj) {
         }
     ];
     var critRoll = function (addCritNum, type) {
-
+        
         var openSlot = false;
         var diceRoll = '';
         var critMod = '';
@@ -2700,7 +2700,6 @@ eote.process.crit = function (cmd, diceObj) {
                         update: true
                     },
                 ];
-                eote.updateAddAttribute(characterObj, critAttrs);
                 var chat = '/direct &{template:base} {{title=' + diceObj.vars.characterName + '}}';
                 chat = chat + '{{subtitle=Critical Injury}}';
                 chat = chat + '{{Previous Criticals=' + totalcrits + ' x 10}}';
@@ -2715,53 +2714,31 @@ eote.process.crit = function (cmd, diceObj) {
                 sendChat(diceObj.vars.characterName, chat);
             }
         }
+        eote.updateAddAttribute(characterObj, critAttrs);
         eote.process.createRepeatingCrit(/repeating_critical/,characterObj,critAttrs2);
     };
     var critHeal = function (critID, type) {
+
+        var rowid = critID;
+        var regex = new RegExp('^repeating_.*?_' + rowid + '_.*?$');
+        var attrsInRow = filterObjs(function(obj) {
+            if (obj.get('type') !== 'attribute' || obj.get('characterid') !== diceObj.vars.characterID) return false;
+            return regex.test(obj.get('name'));
+        });
+        _.each(attrsInRow, function (attribute) {//loop characters
+            attribute.remove();
+        });
+        var totalcrits = parseInt(getAttrByName(diceObj.vars.characterID, type + '-critTotal'));
         critAttrs = [
             {
-                name: type + '-critName' + critID,
-                current: '',
+                name: type + '-critTotal',
+                current: totalcrits-1,
                 max: '',
                 update: true
             },
-            {
-                name: type + '-critSeverity' + critID,
-                current: '',
-                max: '',
-                update: true
-            },
-            {
-                name: type + '-critRange' + critID,
-                current: '',
-                max: '',
-                update: true
-            },
-            {
-                name: type + '-critSummary' + critID,
-                current: '',
-                max: '',
-                update: true
-            },
-/*            {
-                name: type + '-critOn' + critID,
-                current: 0,
-                max: '',
-                update: true
-            }*/
-        ];
-        var fields = findObjs({                              
-          _type: "attribute",                              
-        });
-        log(fields);
-       // _.each(currentPageGraphics, function(obj) {    
-          //Do something with obj, which is in the current page and is a graphic.
-       // });
-        //var crit = getObj("attribute", critID);
-       // log(crit);
-        //crit.remove();
 
-//        eote.updateAddAttribute(characterObj, critAttrs);
+        ];
+        eote.updateAddAttribute(characterObj, critAttrs);
     };
     var critArray = cmd[1].split('|');
     var command = critArray[0];
@@ -2782,7 +2759,6 @@ eote.process.crit = function (cmd, diceObj) {
     }
 };
 eote.process.createRepeatingCrit = function(nameRegex,charactersObj,critAttrs) {
-    //var characterId = diceObj.vars.characterID;
     eote.process.logger("repeating","repeating");
     eote.process.logger("nameregex",nameRegex);
     eote.process.logger("critAttrs",critAttrs);
