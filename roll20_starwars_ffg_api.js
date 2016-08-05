@@ -2715,10 +2715,11 @@ eote.process.crit = function (cmd, diceObj) {
             }
         }
         eote.updateAddAttribute(characterObj, critAttrs);
-        eote.process.createRepeatingCrit(/repeating_critical/,characterObj,critAttrs2);
+        eote.process.createRepeatingCrit(type,characterObj,critAttrs2);
     };
     var critHeal = function (critID, type) {
-
+        log(critID);
+        log(type);
         var rowid = critID;
         var regex = new RegExp('^repeating_.*?_' + rowid + '_.*?$');
         var attrsInRow = filterObjs(function(obj) {
@@ -2758,9 +2759,9 @@ eote.process.crit = function (cmd, diceObj) {
         critRoll(null, type);
     }
 };
-eote.process.createRepeatingCrit = function(nameRegex,charactersObj,critAttrs) {
+eote.process.createRepeatingCrit = function(type,charactersObj,critAttrs) {
     eote.process.logger("repeating","repeating");
-    eote.process.logger("nameregex",nameRegex);
+    eote.process.logger("type",type);
     eote.process.logger("critAttrs",critAttrs);
     var newId = eote.process.generateRowID();
    //check if object or array
@@ -2804,7 +2805,7 @@ eote.process.createRepeatingCrit = function(nameRegex,charactersObj,critAttrs) {
                      log( 'Value: '+ critAttr.current);
                     eote.createObj('attribute', {
                         characterid: characterObj.id,
-                        name: "repeating_critical_" + newId + "_" + critAttr.name,
+                        name: "repeating_crit"+type+"_" + newId + "_" + critAttr.name,
                         current: critAttr.current,
                         max: critAttr.max ? critAttr.max : ''
                     });
@@ -2814,7 +2815,7 @@ eote.process.createRepeatingCrit = function(nameRegex,charactersObj,critAttrs) {
     });   
     eote.createObj('attribute', {
         characterid: characterId,
-        name: "repeating_critical_" + newId + "_character-critId",
+        name: "repeating_crit"+type+"_" + newId + "_"+type+"-critId",
         current: newId
     }); 
        
