@@ -2826,13 +2826,8 @@ eote.process.crit = function (cmd, diceObj) {
                         update: true
                     },
                 ];
-                if(type=="starship" || type=="vehicle"){
-                    var chat = '/direct &{template:base} {{title=Vehicle Critical}} ';
-                    chat = chat + '{{subtitle=' + diceObj.vars.characterName + '}}';
-                }else{
-                    var chat = '/direct &{template:base} {{title=' + diceObj.vars.characterName + '}}';
-                    chat = chat + '{{subtitle=Critical Injury}}';
-                }
+                var chat = '/direct &{template:base} {{title='+type.charAt(0).toUpperCase()+type.slice(1)+' Critical}} ';
+                chat = chat + '{{subtitle=' + diceObj.vars.characterName + '}}';
                 chat = chat + '{{Previous Criticals=' + totalcrits + ' x 10}}';
                 if (rollOffset) {
                     chat = chat + '{{Dice Roll Offset=' + rollOffset + '}}';
