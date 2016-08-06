@@ -1203,7 +1203,7 @@ function SuggestionEngine () {
 
     this.processSuggestions = function(diceObj) {
         if (flags.displayOption === that.enum.displayOptions.none)
-            return;
+            return diceObj;
 
         diceObj.vars.suggestions = {
             general: {
