@@ -1203,7 +1203,7 @@ function SuggestionEngine () {
 
     this.processSuggestions = function(diceObj) {
         if (flags.displayOption === that.enum.displayOptions.none)
-            return;
+            return diceObj;
 
         diceObj.vars.suggestions = {
             general: {
@@ -1864,7 +1864,7 @@ eote.process.setup = function (cmd, playerName, playerID) {
     var critShipMatch = cmd.match(eote.defaults.regex.critShip);
 
     if (critShipMatch) {
-        eote.process.critShip(critShipMatch, diceObj);
+        eote.process.crit(critShipMatch, diceObj);
         return false;
     }
 
@@ -2456,7 +2456,7 @@ eote.process.crit = function (cmd, diceObj) {
     eote.process.logger("eote.process.crit", "");
 
     var characterObj = [{ name: diceObj.vars.characterName, id: diceObj.vars.characterID }];
-    var critTable = [
+    var critTableLifeform = [
         {
             percent: '1 to 5',
             severity: 1,
@@ -2635,168 +2635,7 @@ eote.process.crit = function (cmd, diceObj) {
             Result: 'Complete, absolute death.'
         }
     ];
-    var critRoll = function (addCritNum, type) {
-
-        var openSlot = false;
-        var diceRoll = '';
-        var critMod = '';
-        var rollTotal = '';
-        var rollOffset = parseInt(getAttrByName(diceObj.vars.characterID, type + '-critAddOffset'));
-        rollOffset = rollOffset ? rollOffset : 0;
-        eote.process.logger("critRoll", "rollOffset: " + rollOffset);
-        var totalcrits = 0;
-
-        //check open critical spot
-        for (i = 15; i >= 1; i--) {
-
-            var slot = getAttrByName(diceObj.vars.characterID, type + '-critOn' + i);
-
-            if (slot == '0' || slot == '') {
-                openSlot = i;
-            } else {
-                totalcrits = totalcrits + 1;
-            }
-        }
-        if (!openSlot) {
-            sendChat("Alert", "&{template:critical} {{title=Alert}} {{wide=Why are you not dead!?}}");
-            return false;
-        }
-        //roll random
-        if (!addCritNum) {
-            diceRoll = randomInteger(100);
-            critMod = (totalcrits * 10);
-            rollTotal = diceRoll + critMod + rollOffset;
-            rollTotal = rollTotal < 1 ? 1 : rollTotal;
-            eote.process.logger("critRoll", "diceRoll: " + diceRoll);
-            eote.process.logger("critRoll", "critMod: " + critMod);
-            eote.process.logger("critRoll", "rollTotal " + rollTotal);
-        } else {
-            rollTotal = parseInt(addCritNum);
-        }
-        //find crit in critical table
-        for (var key in critTable) {
-            /*TODO error on split*/
-            var percent = critTable[key].percent.split(' to ');
-            var low = parseInt(percent[0]);
-            var high = percent[1] ? parseInt(percent[1]) : 1000;
-
-            if ((rollTotal >= low) && (rollTotal <= high)) {
-
-                critAttrs = [
-                    {
-                        name: type + '-critName' + openSlot,
-                        current: critTable[key].name,
-                        max: '',
-                        update: true
-                    },
-                    {
-                        name: type + '-critSeverity' + openSlot,
-                        current: critTable[key].severity,
-                        max: '',
-                        update: true
-                    },
-                    {
-                        name: type + '-critRange' + openSlot,
-                        current: critTable[key].percent,
-                        max: '',
-                        update: true
-                    },
-                    {
-                        name: type + '-critSummary' + openSlot,
-                        current: critTable[key].Result,
-                        max: '',
-                        update: true
-                    },
-                    {
-                        name: type + '-critOn' + openSlot,
-                        current: openSlot,
-                        max: '',
-                        update: true
-                    }
-                ];
-                eote.updateAddAttribute(characterObj, critAttrs);
-                var chat = '/direct &{template:base} {{title=' + diceObj.vars.characterName + '}}';
-                chat = chat + '{{subtitle=Critical Injury}}';
-                chat = chat + '{{Previous Criticals=' + totalcrits + ' x 10}}';
-                if (rollOffset) {
-                    chat = chat + '{{Dice Roll Offset=' + rollOffset + '}}';
-                }
-                chat = chat + '{{Dice Roll=' + diceRoll + '}}';
-                chat = chat + '{{Total=' + rollTotal + '}}';
-                chat = chat + '{{wide=<b>' + critTable[key].name + '</b><br>';
-                chat = chat + critTable[key].Result + '<br>}}';
-
-                sendChat(diceObj.vars.characterName, chat);
-            }
-        }
-    };
-
-    var critHeal = function (critID, type) {
-
-        critAttrs = [
-            {
-                name: type + '-critName' + critID,
-                current: '',
-                max: '',
-                update: true
-            },
-            {
-                name: type + '-critSeverity' + critID,
-                current: '',
-                max: '',
-                update: true
-            },
-            {
-                name: type + '-critRange' + critID,
-                current: '',
-                max: '',
-                update: true
-            },
-            {
-                name: type + '-critSummary' + critID,
-                current: '',
-                max: '',
-                update: true
-            },
-            {
-                name: type + '-critOn' + critID,
-                current: 0,
-                max: '',
-                update: true
-            }
-        ];
-        eote.updateAddAttribute(characterObj, critAttrs);
-    };
-    var critArray = cmd[1].split('|');
-    var command = critArray[0];
-    var type = critArray[1] ? critArray[1] : null;
-    var input = critArray[2] ? critArray[2] : null;
-
-    if (type == null) {
-        sendChat("Alert", "Type not supplied. Needs character, companion or beast");
-        return;
-    }
-
-    if (command == 'heal') {
-        critHeal(input, type);
-    } else if (command == 'add') {
-        critRoll(input, type);
-    } else { // crit(roll)
-        critRoll(null, type);
-    }
-};
-
-eote.process.critShip = function (cmd, diceObj) {
-
-    /* CritShip
-     * default: 
-     * Description: Rolls vehicle critical table, Both crit() and critShip() function the same
-     * Command: !eed critShip(roll) critShip(roll|#) critShip(heal|#)
-     * ---------------------------------------------------------------- */
-
-    var characterObj = [{ name: diceObj.vars.characterName, id: diceObj.vars.characterID }];
-
-    var critTable = [
+    var critTableMachine = [
         {
             percent: '1 to 9',
             severity: 1,
@@ -2916,83 +2755,78 @@ eote.process.critShip = function (cmd, diceObj) {
         }
     ];
     var critRoll = function (addCritNum, type) {
-
         var openSlot = false;
         var diceRoll = '';
         var critMod = '';
         var rollTotal = '';
-        var rollOffset = parseInt(getAttrByName(diceObj.vars.characterID, type + '-critShipAddOffset'));
+        var rollOffset = parseInt(getAttrByName(diceObj.vars.characterID, type + '-critAddOffset'));
         rollOffset = rollOffset ? rollOffset : 0;
-        var totalcrits = 0;
-
-        //check open critical spot
-        for (i = 15; i >= 1; i--) {
-
-            var slot = getAttrByName(diceObj.vars.characterID, type + '-critShipOn' + i);
-
-            if (slot == '0' || slot == '') {
-                openSlot = i;
-            } else {
-                totalcrits = totalcrits + 1;
-            }
+        var totalcrits = parseInt(getAttrByName(diceObj.vars.characterID, type + '-critTotal'));
+        if(!totalcrits){
+            totalcrits = 0;
         }
-        if (!openSlot) {
-            sendChat("Alert", "&{template:critical} {{title=Alert}} {{wide=Why are you not dead!?}}");
-            return false;
-        }
+        
         //roll random
         if (!addCritNum) {
             diceRoll = randomInteger(100);
             critMod = (totalcrits * 10);
             rollTotal = diceRoll + critMod + rollOffset;
             rollTotal = rollTotal < 1 ? 1 : rollTotal;
+            eote.process.logger("critRoll", "diceRoll: " + diceRoll);
+            eote.process.logger("critRoll", "critMod: " + critMod);
+            eote.process.logger("critRoll", "rollTotal " + rollTotal);
         } else {
             rollTotal = parseInt(addCritNum);
         }
         //find crit in critical table
+        if(type=="character" || type=="npc" || type == "companion" || type=="beast"){
+            critTable = critTableLifeform;
+        }
+        if(type=="starship" || type=="vehicle"){
+            critTable = critTableMachine;            
+        }
         for (var key in critTable) {
-
             var percent = critTable[key].percent.split(' to ');
             var low = parseInt(percent[0]);
             var high = percent[1] ? parseInt(percent[1]) : 1000;
-
+           
             if ((rollTotal >= low) && (rollTotal <= high)) {
 
                 critAttrs = [
                     {
-                        name: type + '-critShipName' + openSlot,
+                        name: type + '-critTotal',
+                        current: totalcrits+1,
+                        max: '',
+                        update: true
+                    },
+                ];
+                critAttrs2 = [
+                    {
+                        name: type + '-critName',
                         current: critTable[key].name,
                         max: '',
                         update: true
                     },
                     {
-                        name: type + '-critShipSeverity' + openSlot,
+                        name: type + '-critSeverity' ,
                         current: critTable[key].severity,
                         max: '',
                         update: true
                     },
                     {
-                        name: type + '-critShipRange' + openSlot,
+                        name: type + '-critRange',
                         current: critTable[key].percent,
                         max: '',
                         update: true
                     },
                     {
-                        name: type + '-critShipSummary' + openSlot,
+                        name: type + '-critSummary',
                         current: critTable[key].Result,
                         max: '',
                         update: true
                     },
-                    {
-                        name: type + '-critShipOn' + openSlot,
-                        current: openSlot,
-                        max: '',
-                        update: true
-                    }
                 ];
-                eote.updateAddAttribute(characterObj, critAttrs);
-
-                var chat = '/direct &{template:base} {{title=Vehicle Critical}} ';
+                var chat = '/direct &{template:base} {{title='+type.charAt(0).toUpperCase()+type.slice(1)+' Critical}} ';
                 chat = chat + '{{subtitle=' + diceObj.vars.characterName + '}}';
                 chat = chat + '{{Previous Criticals=' + totalcrits + ' x 10}}';
                 if (rollOffset) {
@@ -3001,48 +2835,36 @@ eote.process.critShip = function (cmd, diceObj) {
                 chat = chat + '{{Dice Roll=' + diceRoll + '}}';
                 chat = chat + '{{Total=' + rollTotal + '}}';
                 chat = chat + '{{wide=<b>' + critTable[key].name + '</b><br>';
-                chat = chat + critTable[key].Result + '}}';
+                chat = chat + critTable[key].Result + '<br>}}';
 
                 sendChat(diceObj.vars.characterName, chat);
             }
         }
+        eote.updateAddAttribute(characterObj, critAttrs);
+        eote.process.createRepeatingCrit(type,characterObj,critAttrs2);
     };
-
     var critHeal = function (critID, type) {
-
+        log(critID);
+        log(type);
+        var rowid = critID;
+        var regex = new RegExp('^repeating_.*?_' + rowid + '_.*?$');
+        var attrsInRow = filterObjs(function(obj) {
+            if (obj.get('type') !== 'attribute' || obj.get('characterid') !== diceObj.vars.characterID) return false;
+            return regex.test(obj.get('name'));
+        });
+        _.each(attrsInRow, function (attribute) {//loop characters
+            attribute.remove();
+        });
+        var totalcrits = parseInt(getAttrByName(diceObj.vars.characterID, type + '-critTotal'));
         critAttrs = [
             {
-                name: type + '-critShipName' + critID,
-                current: '',
+                name: type + '-critTotal',
+                current: totalcrits-1,
                 max: '',
                 update: true
             },
-            {
-                name: type + '-critShipSeverity' + critID,
-                current: '',
-                max: '',
-                update: true
-            },
-            {
-                name: type + '-critShipRange' + critID,
-                current: '',
-                max: '',
-                update: true
-            },
-            {
-                name: type + '-critShipSummary' + critID,
-                current: '',
-                max: '',
-                update: true
-            },
-            {
-                name: type + '-critShipOn' + critID,
-                current: 0,
-                max: '',
-                update: true
-            }
-        ];
 
+        ];
         eote.updateAddAttribute(characterObj, critAttrs);
     };
     var critArray = cmd[1].split('|');
@@ -3051,7 +2873,7 @@ eote.process.critShip = function (cmd, diceObj) {
     var input = critArray[2] ? critArray[2] : null;
 
     if (type == null) {
-        sendChat("Alert", "Type not supplied. Needs starship or vehicle");
+        sendChat("Alert", "Type not supplied. Needs character, companion or beast");
         return;
     }
 
@@ -3063,6 +2885,96 @@ eote.process.critShip = function (cmd, diceObj) {
         critRoll(null, type);
     }
 };
+eote.process.createRepeatingCrit = function(type,charactersObj,critAttrs) {
+    eote.process.logger("repeating","repeating");
+    eote.process.logger("type",type);
+    eote.process.logger("critAttrs",critAttrs);
+    var newId = eote.process.generateRowID();
+   //check if object or array
+    if (!_.isArray(charactersObj)) {
+        charactersObj = [charactersObj];
+    }
+    if (!_.isArray(critAttrs)) {
+        critAttrs = [critAttrs];
+    }
+    var characterId = "";
+    _.each(charactersObj, function (characterObj) {//loop characters
+
+        var characterName = '';
+
+        if (characterObj.name) {
+            characterName = characterObj.name;
+        } else {
+            characterName = characterObj.get('name');
+        }
+        characterId = characterObj.id;
+        //find attribute via character ID
+        var characterAttributesObj = findObjs({ _type: "attribute", characterid: characterObj.id });
+
+        if (critAttrs.length != 0) {
+
+            log('UPDATE/ADD ATTRIBUTES FOR:----------------------->' + characterName);
+
+            _.each(critAttrs, function (critAttr) { //loop attributes to update / add
+
+                attr = _.find(characterAttributesObj, function (a) {
+                    return (a.get('name') === critAttr.name);
+                });
+                if (attr) {
+                    if (critAttr.update) {
+                        log('Update Attr: ' + critAttr.name);
+                        attr.set({ current: critAttr.current });
+                        attr.set({ max: critAttr.max ? critAttr.max : '' });
+                    }
+                } else {
+                     log('Add Attr: '+ critAttr.name);
+                     log( 'Value: '+ critAttr.current);
+                    eote.createObj('attribute', {
+                        characterid: characterObj.id,
+                        name: "repeating_crit"+type+"_" + newId + "_" + critAttr.name,
+                        current: critAttr.current,
+                        max: critAttr.max ? critAttr.max : ''
+                    });
+                }
+            });
+        }
+    });   
+    eote.createObj('attribute', {
+        characterid: characterId,
+        name: "repeating_crit"+type+"_" + newId + "_"+type+"-critId",
+        current: newId
+    }); 
+       
+};
+
+
+
+ eote.process.generateRowID = function () {
+    "use strict";
+    var a = 0, b = [];
+    var c = (new Date()).getTime() + 0, d = c === a;
+    a = c;
+    for (var e = new Array(8), f = 7; 0 <= f; f--) {
+        e[f] = "-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz".charAt(c % 64);
+        c = Math.floor(c / 64);
+    }
+    c = e.join("");
+    if (d) {
+        for (f = 11; 0 <= f && 63 === b[f]; f--) {
+            b[f] = 0;
+        }
+        b[f]++;
+    } else {
+        for (f = 0; 12 > f; f++) {
+            b[f] = Math.floor(64 * Math.random());
+        }
+    }
+    for (f = 0; 12 > f; f++){
+        c += "-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz".charAt(b[f]);
+    }
+    return c.replace(/_/g, "Z");
+ };
+
 
 eote.process.gmdice = function (cmd) {
 

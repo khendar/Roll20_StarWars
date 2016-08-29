@@ -1193,7 +1193,7 @@ label.sheet-label-current {
 }
 
 .sheet-critical {
-    display: none;
+    /*display: none;*/
 }
 
 .sheet-checkbox-criton {
